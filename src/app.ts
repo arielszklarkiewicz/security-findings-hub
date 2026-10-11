@@ -27,21 +27,44 @@ import {
 
 const errorSchema = z.object({ error: z.string(), message: z.string() });
 const ingestionSchema = z.object({
-  processed: z.number().int(),
-  created: z.number().int(),
-  updated: z.number().int(),
-  rejected: z.number().int(),
+  processed: z
+    .number()
+    .int()
+    .describe('Raw records received from the mock queue'),
+  created: z.number().int().describe('New unique findings'),
+  updated: z.number().int().describe('Existing findings seen again'),
+  rejected: z.number().int().describe('Malformed scanner records'),
 });
 const listQuerySchema = z.strictObject({
   severity: severitySchema.optional(),
   priority: prioritySchema.optional(),
   status: statusSchema.optional(),
-  application: z.string().trim().min(1).optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  offset: z.coerce.number().int().min(0).default(0),
+  application: z
+    .string()
+    .trim()
+    .min(1)
+    .optional()
+    .describe('Exact, case-sensitive application name'),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(20)
+    .describe('Maximum findings per page'),
+  offset: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .default(0)
+    .describe('Number of matching findings to skip'),
 });
-const idParamsSchema = z.object({ id: z.string().min(1) });
-const statusBodySchema = z.strictObject({ status: statusSchema });
+const idParamsSchema = z.object({
+  id: z.string().min(1).describe('Finding fingerprint ID'),
+});
+const statusBodySchema = z.strictObject({
+  status: statusSchema.describe('New finding status'),
+});
 const summarySchema = z.object({
   total: z.number().int(),
   bySeverity: z.record(severitySchema, z.number().int()),
@@ -67,10 +90,10 @@ export async function buildApp(
   await app.register(swagger, {
     openapi: {
       info: {
-        title: 'Security Findings Hub',
+        title: 'Security Findings Hub API',
         version: '1.0.0',
         description:
-          'Fictional scanner findings and explainable demo prioritization.',
+          'Ingests synthetic findings from three simulated security sources, then normalizes, deduplicates, and prioritizes them. Initial findings are seeded automatically. Repeated ingestion updates existing findings, and priorityReasons explains each calculated priority. This public demo has no authentication; data is held in memory and resets when the service restarts.',
       },
     },
     transform: jsonSchemaTransform,
@@ -92,7 +115,9 @@ export async function buildApp(
     {
       schema: {
         tags: ['System'],
-        summary: 'Process health',
+        summary: 'Check application health',
+        description:
+          'Lightweight check that the application can serve requests.',
         response: {
           200: z.object({ status: z.literal('ok') }),
           500: errorSchema,
@@ -107,11 +132,15 @@ export async function buildApp(
     {
       schema: {
         tags: ['Ingestion'],
-        summary:
-          'Ingest the repeatable mock scanner batch (public demo endpoint)',
+        summary: 'Reprocess the mock scanner batch',
         description:
-          'Public for this demo. Authentication and authorization are required in production.',
-        response: { 200: ingestionSchema, 500: errorSchema },
+          'Processes the same predefined 12 scanner records each time. Existing findings are updated by fingerprint, so repeated runs create no duplicates after startup seeding. This demo endpoint is public.',
+        response: {
+          200: ingestionSchema,
+          400: errorSchema,
+          413: errorSchema,
+          500: errorSchema,
+        },
       },
     },
     async () => ingestion.run(),
@@ -123,6 +152,8 @@ export async function buildApp(
       schema: {
         tags: ['Findings'],
         summary: 'List findings in stable ID order',
+        description:
+          'Returns normalized finding attributes, calculated priorities, and human-readable priorityReasons. Supports exact filters and pagination; total counts all matching findings before pagination.',
         querystring: listQuerySchema,
         response: {
           200: z.object({
@@ -148,6 +179,8 @@ export async function buildApp(
       schema: {
         tags: ['Findings'],
         summary: 'Get one finding',
+        description:
+          'Retrieves an individual finding by its stable fingerprint ID, including its priority reasons and current status.',
         params: idParamsSchema,
         response: {
           200: findingSchema,
@@ -173,12 +206,15 @@ export async function buildApp(
       schema: {
         tags: ['Findings'],
         summary: 'Update finding status',
+        description:
+          'Sets a finding to open or resolved. Subsequent mock ingestion preserves the manually set status.',
         params: idParamsSchema,
         body: statusBodySchema,
         response: {
           200: findingSchema,
           400: errorSchema,
           404: errorSchema,
+          413: errorSchema,
           500: errorSchema,
         },
       },
@@ -202,6 +238,8 @@ export async function buildApp(
       schema: {
         tags: ['Findings'],
         summary: 'Aggregate all findings, including resolved',
+        description:
+          'Returns the total number of unique findings and counts by severity, priority, status, and application. Resolved findings remain included.',
         response: { 200: summarySchema, 500: errorSchema },
       },
     },

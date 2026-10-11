@@ -16,7 +16,7 @@ export const sourceSchema = z.enum([
 
 export const findingSchema = z.object({
   id: z.string(),
-  fingerprint: z.string(),
+  fingerprint: z.string().describe('Stable SHA-256 identity for deduplication'),
   source: sourceSchema,
   application: z.string(),
   category: z.string(),
@@ -26,7 +26,9 @@ export const findingSchema = z.object({
   environment: environmentSchema,
   internetFacing: z.boolean(),
   priority: prioritySchema,
-  priorityReasons: z.array(z.string()),
+  priorityReasons: z
+    .array(z.string())
+    .describe('Human-readable terms used to calculate the priority'),
   status: statusSchema,
   detectedAt: z.iso.datetime(),
   lastSeenAt: z.iso.datetime(),

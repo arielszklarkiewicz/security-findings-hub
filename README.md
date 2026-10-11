@@ -1,10 +1,20 @@
 # Security Findings Hub
 
-A small TypeScript API that ingests fictional dependency, static analysis, and cloud configuration findings. It validates each scanner format, normalizes findings into one model, deduplicates repeated reports, and assigns an explainable priority. Teams face this same integration problem when several tools report overlapping issues in different formats.
+[![CI](https://github.com/arielszklarkiewicz/security-findings-hub/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/arielszklarkiewicz/security-findings-hub/actions/workflows/ci.yml)
 
-**Stack:** Node.js 24, TypeScript, Fastify, Zod, Swagger UI, Vitest, and an in-memory repository. **Demonstrates:** input validation, deterministic identity, idempotent ingestion, contextual scoring, REST design, and automated tests. This is a portfolio demo using synthetic data, not a security scanner or production risk engine.
+Security Findings Hub is a lightweight Node.js/TypeScript backend that consolidates, deduplicates, and prioritizes findings from several security tools. Those tools use different record formats; turning their output into a useful queue requires a common model, stable duplicate detection, and context-aware ranking.
 
-**Live demo:** [Swagger UI](https://security-findings-hub.onrender.com/docs/) on Render. The API is intentionally public and has no authentication.
+The service explores those problems with **Fastify, TypeScript, Zod, Swagger UI, and Vitest**. It uses synthetic findings, a repeatable mock queue, and process-local memory.
+
+**[Explore the Live API](https://security-findings-hub.onrender.com/docs/)** · The demo is public and has no authentication.
+
+## Engineering Highlights
+
+- **Multi-source ingestion:** Three scanner-specific Zod schemas validate dependency, static analysis, and cloud configuration records before normalization.
+- **Idempotent processing:** Stable fingerprints make repeated ingestion update existing findings instead of creating duplicates.
+- **Contextual prioritization:** An explainable score combines severity, environment, and internet exposure.
+- **Testable architecture:** Normalization, fingerprinting, and scoring sit outside the Fastify routes and are exercised by automated tests.
+- **Production considerations:** The mock queue and in-memory repository show where durable messaging and persistence adapters would fit.
 
 ## Architecture
 
@@ -19,7 +29,17 @@ flowchart LR
   API -->|Trigger ingestion| I
 ```
 
-The mock queue returns 12 records, including one duplicate. Startup ingestion produces 11 unique findings. Each later ingestion receives the same batch and updates those findings.
+The mock queue returns 12 records, including one duplicate. Startup ingestion produces 11 unique findings. Later ingestion receives the same batch and updates those findings.
+
+## Try the Live Demo
+
+1. Open the [Swagger documentation](https://security-findings-hub.onrender.com/docs/).
+2. Run `GET /api/findings` to see the 11 seeded findings.
+3. Filter with `priority=P0`, copy an ID, and run `GET /api/findings/:id` to inspect its `priorityReasons`.
+4. Run `POST /api/ingestion/run`. Its `created` count is `0`; run it again to confirm no new findings are created.
+5. Run `PATCH /api/findings/:id` with `{ "status": "resolved" }`.
+6. Re-run ingestion, then retrieve the finding to confirm its status remains `resolved`.
+7. Run `GET /api/summary` to see counts by severity, priority, status, and application.
 
 ## Run and test
 
@@ -38,7 +58,7 @@ npm test
 npm run build
 ```
 
-## API and demo walkthrough
+## API Reference
 
 | Method | Path                 | Purpose                                    |
 | ------ | -------------------- | ------------------------------------------ |
@@ -50,20 +70,20 @@ npm run build
 | PATCH  | `/api/findings/:id`  | Set status to `open` or `resolved`         |
 | GET    | `/api/summary`       | Aggregate all findings, including resolved |
 
-Use Swagger UI for the complete flow, or run these requests with `BASE_URL=http://localhost:3000` (replace it with the Render URL after deployment):
+Use Swagger UI for the complete flow, or set `BASE_URL` to the local server or the deployed URL:
 
 ```bash
+BASE_URL=http://localhost:3000
 curl "$BASE_URL/health"
 curl "$BASE_URL/api/findings?priority=P0&limit=5"
 curl "$BASE_URL/api/findings/FINDING_ID"              # copy a P0 ID from the list
 curl -X POST "$BASE_URL/api/ingestion/run"
-curl -X POST "$BASE_URL/api/ingestion/run"             # created remains 0
 curl -X PATCH "$BASE_URL/api/findings/FINDING_ID" \
   -H 'content-type: application/json' -d '{"status":"resolved"}'
 curl "$BASE_URL/api/summary"
 ```
 
-The list starts with 11 findings. A P0 finding shows `priorityReasons` for its score. Each manual ingestion returns `{"processed":12,"created":0,"updated":12,"rejected":0}`; the duplicate within the batch counts as an update. After a status change, the summary counts one more resolved finding, and later ingestion preserves that status.
+Each manual ingestion returns `{"processed":12,"created":0,"updated":12,"rejected":0}`; the duplicate within the batch counts as an update.
 
 `GET /api/findings` accepts `severity`, `priority`, `status`, and exact case-sensitive `application` filters, plus `limit` (1–100; default 20) and `offset` (nonnegative; default 0). Results sort by ID before pagination. Invalid requests return HTTP 400, oversized bodies return 413, missing IDs return 404, and unexpected failures return a generic 500 response.
 
@@ -100,4 +120,4 @@ The ingestion and status endpoints are public, with no authentication, authoriza
 
 ## AI-assisted development
 
-The workflow was **planning → implementation → validation → review → iteration**. AI assistance generated much of the initial code; a technical review checked behavior, corrected an HTTP error-handling defect, added regression coverage, and verified the built server over HTTP.
+An experienced C#/.NET backend engineer used AI coding tools to accelerate implementation and explore the Node.js/TypeScript ecosystem. Explicit requirements and architecture decisions guided the work: **requirements and architecture → implementation → automated validation → code review → refinement**. AI generated substantial portions of the initial code. Tests and a running-service walkthrough checked behavior; review then corrected an HTTP error-handling defect and added regression coverage. Generated code still requires critical evaluation and verification.
