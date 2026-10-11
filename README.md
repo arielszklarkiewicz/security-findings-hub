@@ -4,7 +4,7 @@ A small TypeScript API that ingests fictional dependency, static analysis, and c
 
 **Stack:** Node.js 24, TypeScript, Fastify, Zod, Swagger UI, Vitest, and an in-memory repository. **Demonstrates:** input validation, deterministic identity, idempotent ingestion, contextual scoring, REST design, and automated tests. This is a portfolio demo using synthetic data, not a security scanner or production risk engine.
 
-**Live demo after deployment:** `https://<your-render-service>.onrender.com/docs/` opens the Swagger UI. The service has not been published from this repository yet. The API is intentionally public and has no authentication.
+**Live demo:** [Swagger UI](https://security-findings-hub.onrender.com/docs/) on Render. The API is intentionally public and has no authentication.
 
 ## Architecture
 
@@ -90,7 +90,7 @@ The included [`render.yaml`](render.yaml) defines **one free Node web service**,
 | Node version          | `24.21.0` from `.nvmrc`               |
 | Environment variables | None required; Render supplies `PORT` |
 
-After deployment, set the live-demo URL near the top of this README to the assigned `onrender.com` address. Check `/health`, `/docs/`, and `/api/findings`. Startup ingestion runs on each process start, so the demo is populated without a separate seed command.
+The deployed service is at `https://security-findings-hub.onrender.com`. Check `/health`, `/docs/`, and `/api/findings`. Startup ingestion runs on each process start, so the demo is populated without a separate seed command.
 
 ## Limits and security scope
 
