@@ -42,6 +42,40 @@ describe('HTTP API', () => {
         ...first.json().data.map((finding: { id: string }) => finding.id),
       ].sort(),
     );
+    const filtered = await app.inject(
+      '/api/findings?application=Atlas%20Admin&priority=P3&status=open&limit=2',
+    );
+    expect(filtered.json()).toMatchObject({
+      total: 3,
+      limit: 2,
+      offset: 0,
+    });
+    expect(filtered.json().data).toHaveLength(2);
+    for (const finding of filtered.json().data) {
+      expect(finding).toMatchObject({
+        application: 'Atlas Admin',
+        priority: 'P3',
+        status: 'open',
+      });
+    }
+    const beyondEnd = await app.inject(
+      '/api/findings?application=Atlas%20Admin&limit=2&offset=3',
+    );
+    expect(beyondEnd.json()).toMatchObject({ data: [], total: 3 });
+  });
+
+  it('aggregates seeded findings by each dimension', async () => {
+    expect((await app.inject('/api/summary')).json()).toEqual({
+      total: 11,
+      bySeverity: { critical: 2, high: 3, medium: 3, low: 3 },
+      byPriority: { P0: 2, P1: 3, P2: 3, P3: 3 },
+      byStatus: { open: 11, resolved: 0 },
+      byApplication: {
+        'Meridian Payments API': 4,
+        'Northstar Portal': 4,
+        'Atlas Admin': 3,
+      },
+    });
   });
 
   it('updates status and includes resolved findings in summary', async () => {
@@ -105,6 +139,31 @@ describe('HTTP API', () => {
         })
       ).statusCode,
     ).toBe(404);
+  });
+
+  it('returns client errors for malformed JSON and oversized bodies', async () => {
+    const malformed = await app.inject({
+      method: 'PATCH',
+      url: '/api/findings/missing',
+      headers: { 'content-type': 'application/json' },
+      payload: '{',
+    });
+    expect(malformed.statusCode).toBe(400);
+    expect(malformed.json()).toEqual({
+      error: 'Bad Request',
+      message: 'Request validation failed',
+    });
+
+    const oversized = await app.inject({
+      method: 'PATCH',
+      url: '/api/findings/missing',
+      payload: { status: 'open', padding: 'x'.repeat(1_048_576) },
+    });
+    expect(oversized.statusCode).toBe(413);
+    expect(oversized.json()).toEqual({
+      error: 'Payload Too Large',
+      message: 'Request validation failed',
+    });
   });
 
   it('hides unexpected errors behind a consistent 500 response', async () => {

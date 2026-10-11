@@ -86,4 +86,19 @@ describe('ingestion and repository', () => {
       repository.findById(firstPage.data[0]!.id)?.priorityReasons,
     ).not.toContain('tampered');
   });
+
+  it('deduplicates concurrent ingestion runs in one process', async () => {
+    const repository = new InMemoryFindingsRepository();
+    const service = new IngestionService(
+      new MockFindingsQueue([sampleFindings[0]]),
+      repository,
+      logger,
+    );
+    const results = await Promise.all([service.run(), service.run()]);
+    expect(results).toEqual([
+      { processed: 1, created: 1, updated: 0, rejected: 0 },
+      { processed: 1, created: 0, updated: 1, rejected: 0 },
+    ]);
+    expect(repository.summary().total).toBe(1);
+  });
 });

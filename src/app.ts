@@ -1,3 +1,4 @@
+import { STATUS_CODES } from 'node:http';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
@@ -208,10 +209,12 @@ export async function buildApp(
   );
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
-    if (error.validation) {
-      return reply
-        .code(400)
-        .send({ error: 'Bad Request', message: 'Request validation failed' });
+    const statusCode = error.validation ? 400 : error.statusCode;
+    if (statusCode && statusCode >= 400 && statusCode < 500) {
+      return reply.code(statusCode).send({
+        error: STATUS_CODES[statusCode] ?? 'Client Error',
+        message: 'Request validation failed',
+      });
     }
     request.log.error({ err: error }, 'Unexpected request failure');
     return reply.code(500).send({
