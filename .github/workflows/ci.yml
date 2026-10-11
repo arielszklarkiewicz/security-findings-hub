@@ -1,4 +1,5 @@
 name: CI
+run-name: Backend validation
 
 on:
   push:
