@@ -1,0 +1,163 @@
+export interface FindingsQueue {
+  receive(): Promise<unknown[]>;
+}
+
+const detectedAt = '2026-01-15T10:00:00.000Z';
+
+// Fictional sample records. The duplicate payment dependency is intentional.
+export const sampleFindings: unknown[] = [
+  {
+    source: 'dependency',
+    application: 'Meridian Payments API',
+    environment: 'production',
+    internetFacing: true,
+    severity: 'critical',
+    detectedAt,
+    packageName: 'ledger-parser',
+    advisoryId: 'SYN-2026-001',
+    version: '2.1.0',
+    details: 'Synthetic advisory for an unsafe parser.',
+  },
+  {
+    source: 'dependency',
+    application: 'Meridian Payments API',
+    environment: 'production',
+    internetFacing: true,
+    severity: 'critical',
+    detectedAt,
+    packageName: 'ledger-parser',
+    advisoryId: 'SYN-2026-001',
+    version: '2.1.0',
+    details: 'Synthetic advisory for an unsafe parser.',
+  },
+  {
+    source: 'dependency',
+    application: 'Northstar Portal',
+    environment: 'staging',
+    internetFacing: false,
+    severity: 'medium',
+    detectedAt,
+    packageName: 'image-kit',
+    advisoryId: 'SYN-2026-002',
+    version: '1.4.2',
+    details: 'Synthetic image decoder flaw.',
+  },
+  {
+    source: 'dependency',
+    application: 'Atlas Admin',
+    environment: 'development',
+    internetFacing: false,
+    severity: 'low',
+    detectedAt,
+    packageName: 'old-logger',
+    advisoryId: 'SYN-2026-003',
+    version: '0.8.0',
+    details: 'Synthetic logging configuration concern.',
+  },
+  {
+    source: 'dependency',
+    application: 'Northstar Portal',
+    environment: 'production',
+    internetFacing: true,
+    severity: 'high',
+    detectedAt,
+    packageName: 'template-engine',
+    advisoryId: 'SYN-2026-004',
+    version: '3.0.1',
+    details: 'Synthetic template escaping concern.',
+  },
+  {
+    source: 'static-analysis',
+    application: 'Meridian Payments API',
+    environment: 'production',
+    internetFacing: true,
+    severity: 'high',
+    detectedAt,
+    ruleId: 'SQL-INJECTION-POSSIBLE',
+    file: 'src/routes/orders.ts',
+    line: 83,
+    message:
+      'Untrusted query input may reach a SQL construction path; unverified simulation.',
+  },
+  {
+    source: 'static-analysis',
+    application: 'Northstar Portal',
+    environment: 'production',
+    internetFacing: true,
+    severity: 'medium',
+    detectedAt,
+    ruleId: 'XSS-POSSIBLE',
+    file: 'src/views/profile.ts',
+    line: 44,
+    message:
+      'Output may be rendered without contextual encoding; unverified simulation.',
+  },
+  {
+    source: 'static-analysis',
+    application: 'Atlas Admin',
+    environment: 'development',
+    internetFacing: false,
+    severity: 'low',
+    detectedAt,
+    ruleId: 'DEBUG-LOGGING',
+    file: 'src/config.ts',
+    line: 12,
+    message: 'Verbose logging may be enabled; unverified simulation.',
+  },
+  {
+    source: 'static-analysis',
+    application: 'Meridian Payments API',
+    environment: 'staging',
+    internetFacing: false,
+    severity: 'medium',
+    detectedAt,
+    ruleId: 'WEAK-HASH',
+    file: 'src/legacy/hash.ts',
+    line: 25,
+    message: 'Legacy hash function detected; unverified simulation.',
+  },
+  {
+    source: 'cloud-config',
+    application: 'Northstar Portal',
+    environment: 'production',
+    internetFacing: true,
+    severity: 'critical',
+    detectedAt,
+    resourceId: 'synthetic-bucket-001',
+    controlId: 'PUBLIC-STORAGE',
+    resourceType: 'object-storage',
+    observation: 'Simulated storage policy permits public reads.',
+  },
+  {
+    source: 'cloud-config',
+    application: 'Meridian Payments API',
+    environment: 'production',
+    internetFacing: false,
+    severity: 'high',
+    detectedAt,
+    resourceId: 'synthetic-db-002',
+    controlId: 'ENCRYPTION-DISABLED',
+    resourceType: 'database',
+    observation: 'Simulated database encryption setting is disabled.',
+  },
+  {
+    source: 'cloud-config',
+    application: 'Atlas Admin',
+    environment: 'development',
+    internetFacing: false,
+    severity: 'low',
+    detectedAt,
+    resourceId: 'synthetic-log-003',
+    controlId: 'SHORT-RETENTION',
+    resourceType: 'log-group',
+    observation: 'Simulated log retention is shorter than the demo policy.',
+  },
+];
+
+export class MockFindingsQueue implements FindingsQueue {
+  constructor(private readonly records: readonly unknown[] = sampleFindings) {}
+
+  async receive(): Promise<unknown[]> {
+    return structuredClone(this.records) as unknown[];
+  }
+}
